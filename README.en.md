@@ -104,7 +104,7 @@ scripts/run_oracle_rag.sh   # → results/oracle_base_n500/
 ```
 
 Extra arguments override the defaults, e.g. `scripts/run_simple_rag.sh --num-samples 10 --top-k 3`.
-See `uv run python simple_rag.py --help` for all arguments.
+See `uv run python src/simple_rag.py --help` for all arguments.
 With 10 concurrent requests, a 500-claim run took about 11 minutes each for No RAG and Simple RAG, and about 8 minutes for Oracle RAG.
 
 Each run is saved to its own `results/<run-name>/` folder.
@@ -130,13 +130,14 @@ scripts/eval.sh results/rag_base_k10_n500 --show             # also print gold/p
 ## Repository layout
 
 ```
-├── no_rag.py            # No RAG (no evidence)
-├── simple_rag.py        # Simple RAG
-├── oracle_rag.py        # Oracle RAG
-├── common.py            # CLI arguments, prompt loading, output schema, run logging
-├── eval.py              # accuracy / F1 and run comparison
-├── download_data.py     # download dev.json + knowledge store
-├── build_db.py          # knowledge store → per-claim Chroma collections
+├── src/
+│   ├── no_rag.py        # No RAG (no evidence)
+│   ├── simple_rag.py    # Simple RAG
+│   ├── oracle_rag.py    # Oracle RAG
+│   ├── common.py        # CLI arguments, prompt loading, output schema, run logging
+│   ├── eval.py          # accuracy / F1 and run comparison
+│   ├── download_data.py # download dev.json + knowledge store
+│   └── build_db.py      # knowledge store → per-claim Chroma collections
 ├── prompts/
 │   └── base.txt         # system prompt
 └── scripts/             # run scripts with default arguments for the above

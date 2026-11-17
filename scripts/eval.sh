@@ -5,4 +5,4 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-uv run python eval.py "$@"
+uv run python src/eval.py "$@"

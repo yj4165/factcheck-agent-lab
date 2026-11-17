@@ -7,7 +7,7 @@
 이미 다 들어간 클레임은 건너뛰므로 중간에 끊겨도 다시 실행하면 이어서 진행한다.
 데이터는 download_data.py로 먼저 받아 둔다.
 
-실행 예시는 scripts/build_db.sh, 전체 인자는 `uv run python build_db.py --help` 참고.
+실행 예시는 scripts/build_db.sh, 전체 인자는 `uv run python src/build_db.py --help` 참고.
 """
 
 import argparse

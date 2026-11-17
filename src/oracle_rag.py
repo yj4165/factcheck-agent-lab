@@ -4,7 +4,7 @@
 시스템 프롬프트·사용자 메시지 틀을 쓰고, 근거 부분만 정답 QA로 바꾼다.
 판정이 그대로 적혀 있는 justification 필드는 넣지 않는다.
 
-실행 예시는 scripts/run_oracle_rag.sh, 전체 인자는 `uv run python oracle_rag.py --help` 참고.
+실행 예시는 scripts/run_oracle_rag.sh, 전체 인자는 `uv run python src/oracle_rag.py --help` 참고.
 """
 
 import argparse

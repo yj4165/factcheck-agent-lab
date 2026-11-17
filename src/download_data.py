@@ -7,7 +7,7 @@
 이미 받은 파일·이미 푼 파일은 건너뛰므로 중간에 끊겨도 다시 실행하면 이어서 진행한다.
 DB 구축은 build_db.py가 따로 한다.
 
-실행 예시는 scripts/download_data.sh, 전체 인자는 `uv run python download_data.py --help` 참고.
+실행 예시는 scripts/download_data.sh, 전체 인자는 `uv run python src/download_data.py --help` 참고.
 """
 
 import argparse

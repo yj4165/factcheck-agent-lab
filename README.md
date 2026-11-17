@@ -103,7 +103,7 @@ scripts/run_oracle_rag.sh   # → results/oracle_base_n500/
 ```
 
 인자를 덧붙이면 기본값을 덮어씁니다. 예: `scripts/run_simple_rag.sh --num-samples 10 --top-k 3`.
-전체 인자는 `uv run python simple_rag.py --help`로 볼 수 있습니다.
+전체 인자는 `uv run python src/simple_rag.py --help`로 볼 수 있습니다.
 동시 요청 10개 기준으로 500개 실행에 No RAG·Simple RAG 각각 약 11분, Oracle RAG 약 8분이 걸렸습니다.
 
 실행 하나는 `results/<run-name>/` 폴더 하나로 저장됩니다.
@@ -129,13 +129,14 @@ scripts/eval.sh results/rag_base_k10_n500 --show             # 정답/예측 쌍
 ## 파일 구성
 
 ```
-├── no_rag.py            # No RAG (근거 없음)
-├── simple_rag.py        # Simple RAG
-├── oracle_rag.py        # Oracle RAG
-├── common.py            # CLI 인자, 프롬프트 로딩, 출력 스키마, 실행 기록 저장
-├── eval.py              # accuracy / F1 계산 및 실행 비교
-├── download_data.py     # dev.json + knowledge store 다운로드
-├── build_db.py          # knowledge store → 클레임별 Chroma 컬렉션
+├── src/
+│   ├── no_rag.py        # No RAG (근거 없음)
+│   ├── simple_rag.py    # Simple RAG
+│   ├── oracle_rag.py    # Oracle RAG
+│   ├── common.py        # CLI 인자, 프롬프트 로딩, 출력 스키마, 실행 기록 저장
+│   ├── eval.py          # accuracy / F1 계산 및 실행 비교
+│   ├── download_data.py # dev.json + knowledge store 다운로드
+│   └── build_db.py      # knowledge store → 클레임별 Chroma 컬렉션
 ├── prompts/
 │   └── base.txt         # 시스템 프롬프트
 └── scripts/             # 위 스크립트들의 기본 인자를 담은 실행 스크립트

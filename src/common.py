@@ -16,7 +16,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-PROMPT_DIR = Path(__file__).parent / "prompts"
+PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
 class FactChecking(BaseModel):
@@ -112,7 +112,7 @@ def _git_state() -> dict:
     """현재 커밋과, 커밋되지 않은 코드 변경(추적 안 된 파일 포함)이 있는지 여부."""
     def git(*cmd):
         return subprocess.run(
-            ["git", *cmd], capture_output=True, text=True, check=True, cwd=Path(__file__).parent
+            ["git", *cmd], capture_output=True, text=True, check=True, cwd=Path(__file__).parent.parent
         ).stdout.strip()
 
     try:

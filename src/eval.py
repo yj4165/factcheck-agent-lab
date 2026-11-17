@@ -1,10 +1,10 @@
 """결과를 읽어 accuracy와 F1을 출력한다.
 
 사용법:
-    uv run python eval.py                               # results/ 아래 모든 실행 폴더 비교
-    uv run python eval.py results/norag_base_n500       # 실행 폴더 하나
-    uv run python eval.py results/a results/b.pkl       # 여러 개 비교 (폴더와 pkl 혼용 가능)
-    uv run python eval.py results/norag_base_n500 --show  # 정답/예측 쌍도 출력
+    uv run python src/eval.py                                 # results/ 아래 모든 실행 폴더 비교
+    uv run python src/eval.py results/norag_base_n500         # 실행 폴더 하나
+    uv run python src/eval.py results/a results/b.pkl         # 여러 개 비교 (폴더와 pkl 혼용 가능)
+    uv run python src/eval.py results/norag_base_n500 --show  # 정답/예측 쌍도 출력
 
 입력:
     - 실행 폴더: results/<run-name>/ (results.pkl + config.json). 설정도 함께 보여준다.

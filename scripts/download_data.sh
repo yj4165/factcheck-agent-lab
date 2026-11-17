@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-uv run python download_data.py \
+uv run python src/download_data.py \
   --data-dir datasets \
   --start-claim 0 \
   --num-claims 500 \

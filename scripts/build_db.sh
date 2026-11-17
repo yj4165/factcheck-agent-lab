@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-uv run python build_db.py \
+uv run python src/build_db.py \
   --knowledge-store datasets/knowledge_store \
   --db-path datasets/chroma_db_head50 \
   --embedding-model BAAI/bge-small-en-v1.5 \

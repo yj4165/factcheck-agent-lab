@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-uv run python no_rag.py \
+uv run python src/no_rag.py \
   --model gpt-5-nano \
   --prompt base \
   --data-path datasets/dev.json \

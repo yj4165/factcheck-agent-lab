@@ -1,6 +1,6 @@
 """No RAG baseline: 근거 없이 claim만 LLM에 넣고 판정한다.
 
-실행 예시는 scripts/run_no_rag.sh, 전체 인자는 `uv run python no_rag.py --help` 참고.
+실행 예시는 scripts/run_no_rag.sh, 전체 인자는 `uv run python src/no_rag.py --help` 참고.
 """
 
 import argparse

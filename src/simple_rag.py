@@ -1,6 +1,6 @@
 """Simple RAG baseline: claim별 Chroma 컬렉션에서 근거를 검색해 함께 넣고 판정한다.
 
-실행 예시는 scripts/run_simple_rag.sh, 전체 인자는 `uv run python simple_rag.py --help` 참고.
+실행 예시는 scripts/run_simple_rag.sh, 전체 인자는 `uv run python src/simple_rag.py --help` 참고.
 """
 
 import argparse
