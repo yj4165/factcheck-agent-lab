@@ -24,9 +24,30 @@ All three methods use the same system prompt ([prompts/base.txt](prompts/base.tx
 (none → retrieved sentences → gold QA).
 The LLM returns `reasoning`, `verdict` and `confidence` as structured output (JSON).
 
-## Results
+## Experimental setup
 
-`gpt-5-nano`, `prompts/base.txt`, all 500 dev claims, single run.
+All results below use this setup (2026-11-16, one run per method).
+
+| Item | Value |
+|---|---|
+| LLM | OpenAI `gpt-5-nano` (via [LiteLLM](https://docs.litellm.ai/); temperature, reasoning effort, etc. not set, so API defaults) |
+| Output format | structured output (`reasoning`, `verdict`, `confidence`) |
+| System prompt | [prompts/base.txt](prompts/base.txt) |
+| Data | all 500 claims of the AVeriTeC dev set |
+| Embedding model (Simple RAG) | `BAAI/bge-small-en-v1.5` |
+| Retrieval (Simple RAG) | one search with the claim text, top 10 sentences by cosine similarity |
+
+Usage per method (500 claims):
+
+| Method | Input tokens | Output tokens | Time (10 concurrent requests) |
+|---|---:|---:|---:|
+| No RAG | 87,196 | 628,641 | ~11 min |
+| Simple RAG | 290,690 | 611,724 | ~11 min |
+| Oracle RAG | 189,979 | 542,183 | ~8 min |
+
+`gpt-5-nano` is a reasoning model, so output tokens include reasoning tokens and far exceed input tokens.
+
+## Results
 
 | Method | Evidence | Accuracy | Macro F1 | Weighted F1 |
 |---|---|---:|---:|---:|

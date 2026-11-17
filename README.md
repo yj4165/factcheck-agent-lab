@@ -24,9 +24,30 @@ LLM에 넣고, 아래 4개 라벨 중 하나로 판정하게 한 뒤 정답과 �
 (없음 → 검색한 문장 → 정답 QA).
 LLM은 `reasoning`, `verdict`, `confidence`를 구조화된 출력(JSON)으로 돌려줍니다.
 
-## 결과
+## 실험 설정
 
-`gpt-5-nano`, `prompts/base.txt`, dev 셋 500개 전체, 실행 1회 기준입니다.
+아래 결과는 모두 이 설정으로 실행했습니다 (2026-11-16, 방법별 1회).
+
+| 항목 | 값 |
+|---|---|
+| LLM | OpenAI `gpt-5-nano` ([LiteLLM](https://docs.litellm.ai/) 경유, temperature·reasoning effort 등은 지정하지 않아 API 기본값) |
+| 출력 형식 | 구조화된 출력 (`reasoning`, `verdict`, `confidence`) |
+| 시스템 프롬프트 | [prompts/base.txt](prompts/base.txt) |
+| 데이터 | AVeriTeC dev 셋 500개 전체 |
+| 임베딩 모델 (Simple RAG) | `BAAI/bge-small-en-v1.5` |
+| 검색 (Simple RAG) | 클레임 문장으로 1회 검색, 코사인 유사도 상위 10문장 |
+
+방법별 사용량 (500개 기준):
+
+| 방법 | 입력 토큰 | 출력 토큰 | 소요 시간 (동시 요청 10개) |
+|---|---:|---:|---:|
+| No RAG | 87,196 | 628,641 | 약 11분 |
+| Simple RAG | 290,690 | 611,724 | 약 11분 |
+| Oracle RAG | 189,979 | 542,183 | 약 8분 |
+
+`gpt-5-nano`는 추론 모델이라 출력 토큰에 추론(reasoning) 토큰이 포함되어 입력보다 훨씬 많습니다.
+
+## 결과
 
 | 방법 | 근거 | Accuracy | Macro F1 | Weighted F1 |
 |---|---|---:|---:|---:|
