@@ -13,29 +13,36 @@ LLM에 넣고, 아래 4개 라벨 중 하나로 판정하게 한 뒤 정답과 �
 | Not Enough Evidence | 35 |
 | Conflicting Evidence/Cherrypicking | 38 |
 
-현재 공개된 방법은 세 가지입니다.
+현재 공개된 방법은 네 가지입니다.
 
 - **No RAG** (`no_rag.py`): 근거 없이 클레임만 넣고, 모델이 가진 지식만으로 판정하게 합니다.
 - **Simple RAG** (`simple_rag.py`): 클레임 문장 그대로 클레임별 문서 풀(Chroma)을 한 번 검색해 상위 k개 문장을 근거로 넣습니다.
 - **Oracle RAG** (`oracle_rag.py`): 검색 대신 데이터셋에 사람이 달아 둔 정답 QA(질문·답변)를 근거로 넣습니다.
   "검색이 완벽하다면 어디까지 가능한가"를 보는 상한선 실험입니다. 판정이 그대로 적힌 `justification` 필드는 넣지 않습니다.
+- **Agent** (`simple_agent.py`): LLM이 `search` 도구로 직접 검색어를 정해 여러 번 검색한 뒤, `final_answer` 도구로 판정을 냅니다.
+  검색 대상(클레임별 문서 풀)과 검색 1회당 반환 개수(상위 10문장)는 Simple RAG와 같고,
+  **무엇을 몇 번 검색할지를 모델이 정한다는 점**만 다릅니다.
 
-세 방법은 같은 시스템 프롬프트([prompts/base.txt](prompts/base.txt))를 쓰고, 사용자 메시지에 넣는 **근거만** 다릅니다
+앞의 세 방법은 같은 시스템 프롬프트([prompts/base.txt](prompts/base.txt))를 쓰고, 사용자 메시지에 넣는 **근거만** 다릅니다
 (없음 → 검색한 문장 → 정답 QA).
 LLM은 `reasoning`, `verdict`, `confidence`를 구조화된 출력(JSON)으로 돌려줍니다.
+Agent는 도구 사용을 안내하는 별도 프롬프트([prompts/agent_base.txt](prompts/agent_base.txt))를 쓰고,
+사용자 메시지에는 클레임 문장만 넣습니다. 같은 세 필드를 `final_answer` 도구의 인자로 돌려줍니다.
 
 ## 실험 설정
 
-아래 결과는 모두 이 설정으로 실행했습니다 (2026-11-16, 방법별 1회).
+아래 결과는 모두 이 설정으로 실행했습니다 (No RAG·Simple RAG·Oracle RAG는 2026-11-16, Agent는 2026-11-18, 방법별 1회).
 
 | 항목 | 값 |
 |---|---|
 | LLM | OpenAI `gpt-5-nano` ([LiteLLM](https://docs.litellm.ai/) 경유, temperature·reasoning effort 등은 지정하지 않아 API 기본값) |
 | 출력 형식 | 구조화된 출력 (`reasoning`, `verdict`, `confidence`) |
-| 시스템 프롬프트 | [prompts/base.txt](prompts/base.txt) |
+| 시스템 프롬프트 | [prompts/base.txt](prompts/base.txt) (Agent는 [prompts/agent_base.txt](prompts/agent_base.txt)) |
 | 데이터 | AVeriTeC dev 셋 500개 전체 |
 | 임베딩 모델 (Simple RAG) | `BAAI/bge-small-en-v1.5` |
 | 검색 (Simple RAG) | 클레임 문장으로 1회 검색, 코사인 유사도 상위 10문장 |
+| 검색 (Agent) | 모델이 정한 검색어로 필요한 만큼 검색, 검색 1회당 상위 10문장 (Simple RAG와 같은 DB·임베딩 모델) |
+| 최대 스텝 (Agent) | 10 (스텝 = LLM 호출 1회 + 도구 실행). 마지막 스텝에서는 `final_answer` 호출을 강제 |
 
 방법별 사용량 (500개 기준):
 
@@ -44,8 +51,10 @@ LLM은 `reasoning`, `verdict`, `confidence`를 구조화된 출력(JSON)으로 �
 | No RAG | 87,196 | 628,641 | 약 11분 |
 | Simple RAG | 290,690 | 611,724 | 약 11분 |
 | Oracle RAG | 189,979 | 542,183 | 약 8분 |
+| Agent | 4,041,280 | 1,698,187 | 약 25분 |
 
 `gpt-5-nano`는 추론 모델이라 출력 토큰에 추론(reasoning) 토큰이 포함되어 입력보다 훨씬 많습니다.
+Agent는 클레임당 평균 4.85회 LLM을 호출하고(총 2,426회), 매 호출마다 앞선 검색 결과를 다시 입력하므로 입력 토큰이 Simple RAG의 약 14배입니다.
 
 ## 결과
 
@@ -53,16 +62,17 @@ LLM은 `reasoning`, `verdict`, `confidence`를 구조화된 출력(JSON)으로 �
 |---|---|---:|---:|---:|
 | No RAG | 없음 | 0.434 | 0.364 | 0.510 |
 | Simple RAG | 검색 상위 10문장 | 0.482 | 0.413 | 0.550 |
+| Agent | 에이전트가 검색한 문장 (검색 1회당 상위 10문장) | 0.532 | 0.421 | 0.592 |
 | Oracle RAG | 정답 QA | **0.766** | **0.625** | **0.786** |
 
 라벨별 F1과 예측 개수(괄호):
 
-| 라벨 (정답 개수) | No RAG | Simple RAG | Oracle RAG |
-|---|---:|---:|---:|
-| Supported (122) | 0.497 (47) | 0.635 (89) | 0.808 (91) |
-| Refuted (305) | 0.594 (170) | 0.597 (174) | 0.866 (293) |
-| Not Enough Evidence (35) | 0.194 (274) | 0.185 (181) | 0.385 (95) |
-| Conflicting Evidence/Cherrypicking (38) | 0.170 (9) | 0.234 (56) | 0.441 (21) |
+| 라벨 (정답 개수) | No RAG | Simple RAG | Agent | Oracle RAG |
+|---|---:|---:|---:|---:|
+| Supported (122) | 0.497 (47) | 0.635 (89) | 0.645 (92) | 0.808 (91) |
+| Refuted (305) | 0.594 (170) | 0.597 (174) | 0.668 (216) | 0.866 (293) |
+| Not Enough Evidence (35) | 0.194 (274) | 0.185 (181) | 0.134 (129) | 0.385 (95) |
+| Conflicting Evidence/Cherrypicking (38) | 0.170 (9) | 0.234 (56) | 0.238 (63) | 0.441 (21) |
 
 결과에서 보이는 점:
 
@@ -73,13 +83,31 @@ LLM은 `reasoning`, `verdict`, `confidence`를 구조화된 출력(JSON)으로 �
   그만큼 Refuted recall이 오릅니다(0.46 → 0.47 → 0.85).
 - **근거가 완벽해도 Not Enough Evidence와 Conflicting은 어렵습니다.** Oracle에서도 두 라벨의 F1은 0.4 안팎입니다.
   이 부분은 검색보다 프롬프트·라벨 정의 쪽 문제로 보입니다.
+- **에이전트가 검색어를 정하면 accuracy가 Simple RAG보다 5.0%p 오릅니다**(0.482 → 0.532). 검색 DB와 검색 1회당 근거 개수는 같으므로
+  차이는 검색어 선택과 검색 횟수에서 나옵니다. 개선은 주로 Refuted에서 나왔습니다(F1 0.597 → 0.668, recall 0.47 → 0.57).
+  다만 Macro F1은 0.413 → 0.421로 거의 그대로이고, Oracle RAG(0.766)와의 차이는 여전히 큽니다.
+- **근거를 못 찾은 에이전트는 최대 스텝까지 검색을 반복하다 Not Enough Evidence로 끝납니다.**
+  78개(15.6%)가 최대 스텝 10에 도달했고, 이 중 50개를 Not Enough Evidence로 판정해 accuracy가 0.21(16/78)에 그쳤습니다
+  (이 78개 중 정답이 Not Enough Evidence인 것은 8개). 반면 검색 1회 후 바로 답한 142개는 0.68(96/142)입니다.
+  그 결과 Not Enough Evidence의 F1은 Simple RAG보다 오히려 낮습니다(0.185 → 0.134).
+
+Agent의 스텝·검색 횟수 분포 (500개):
+
+| 스텝 수 | 클레임 수 | Accuracy |
+|---|---:|---:|
+| 2 (검색 1회 → 판정) | 142 | 0.676 |
+| 3–9 | 280 | 0.550 |
+| 10 (최대 스텝 도달) | 78 | 0.205 |
+
+클레임당 검색 횟수는 평균 4.0회, 중앙값 2회입니다 (한 스텝에서 여러 검색을 동시에 호출할 수 있어 스텝 수와 다릅니다).
 
 참고 사항:
 
 - 실행 1회 결과라 LLM 출력의 무작위성에 따른 편차가 있습니다. 100개 샘플로 돌렸을 때 Simple RAG(k=10) accuracy는 0.50이었습니다.
 - Simple RAG의 검색 대상은 AVeriTeC가 제공하는 클레임별 knowledge store입니다. 이 파일은 type 순(gold → question → ...)으로
   정렬돼 있고, 기본 설정은 앞 50개 문서만 쓰므로 정답 출처 문서가 포함되기 쉬운, 실제 웹 검색보다 유리한 조건입니다.
-- 출력 파싱에 실패하면 `Not Enough Evidence`로 처리합니다 (위 세 실행은 실패 0건).
+- 출력 파싱에 실패하면 `Not Enough Evidence`로 처리합니다 (No RAG·Simple RAG·Oracle RAG 실행은 실패 0건).
+  Agent는 최대 스텝까지 `final_answer`를 내지 못한 4건(정답은 Supported 2, Refuted 2)이 이렇게 처리됐고, 위 지표에 포함되어 있습니다.
 
 ## 재현 방법
 
@@ -105,7 +133,7 @@ scripts/download_data.sh
 knowledge store는 zip이 약 11GB, 압축을 풀면 약 34GB입니다. 끊기면 다시 실행해 이어 받을 수 있습니다.
 No RAG·Oracle RAG만 돌릴 거라면 `scripts/download_data.sh --skip-knowledge-store`로 `dev.json`만 받으면 됩니다.
 
-### 3. 검색 DB 구축 (Simple RAG만 필요)
+### 3. 검색 DB 구축 (Simple RAG·Agent만 필요)
 
 ```bash
 scripts/build_db.sh
@@ -121,18 +149,21 @@ Apple Silicon이면 MPS, 아니면 CPU를 씁니다. 이미 구축된 클레임�
 scripts/run_no_rag.sh       # → results/norag_base_n500/
 scripts/run_simple_rag.sh   # → results/rag_base_k10_n500/
 scripts/run_oracle_rag.sh   # → results/oracle_base_n500/
+scripts/run_agent.sh        # → results/agent_base_k10_n500/
 ```
 
 인자를 덧붙이면 기본값을 덮어씁니다. 예: `scripts/run_simple_rag.sh --num-samples 10 --top-k 3`.
 전체 인자는 `uv run python src/simple_rag.py --help`로 볼 수 있습니다.
-동시 요청 10개 기준으로 500개 실행에 No RAG·Simple RAG 각각 약 11분, Oracle RAG 약 8분이 걸렸습니다.
+동시 요청 10개 기준으로 500개 실행에 No RAG·Simple RAG 각각 약 11분, Oracle RAG 약 8분, Agent 약 25분이 걸렸습니다
+(Agent는 클레임 10개를 동시에 처리).
+Agent의 도구 구성과 최대 스텝은 `--tools`(기본 `search`), `--max-steps`(기본 10)로 바꿀 수 있습니다.
 
 실행 하나는 `results/<run-name>/` 폴더 하나로 저장됩니다.
 
 | 파일 | 내용 |
 |---|---|
-| `config.json` | 실행 인자, 시스템 프롬프트 전문, 사용자 메시지 틀, git 커밋, 소요 시간·토큰 사용량, 지표 |
-| `results.pkl` | LLM 원본 응답 (LiteLLM `ModelResponse` 리스트) |
+| `config.json` | 실행 인자, 시스템 프롬프트 전문, 사용자 메시지 틀(Agent는 도구 정의), git 커밋, 소요 시간·토큰 사용량, 지표 |
+| `results.pkl` | LLM 원본 응답 (LiteLLM `ModelResponse` 리스트). Agent는 클레임별 최종 출력·스텝 수·토큰 사용량과 전체 궤적(검색어, 검색 결과, LLM 응답) |
 | `evidence.json` | 클레임별로 모델에 넣은 근거 (Simple RAG·Oracle RAG만) |
 
 폴더 이름은 인자에서 자동으로 만들어집니다 (`<방법>_<프롬프트>_k<top-k>_n<샘플수>`, 이미 있으면 `_r2`, `_r3` ...).
@@ -143,7 +174,7 @@ scripts/run_oracle_rag.sh   # → results/oracle_base_n500/
 
 ```bash
 scripts/eval.sh                                              # results/ 아래 전체 비교
-scripts/eval.sh results/norag_base_n500 results/rag_base_k10_n500 results/oracle_base_n500
+scripts/eval.sh results/norag_base_n500 results/rag_base_k10_n500 results/agent_base_k10_n500 results/oracle_base_n500
 scripts/eval.sh results/rag_base_k10_n500 --show             # 정답/예측 쌍까지 출력
 ```
 
@@ -154,12 +185,15 @@ scripts/eval.sh results/rag_base_k10_n500 --show             # 정답/예측 쌍
 │   ├── no_rag.py        # No RAG (근거 없음)
 │   ├── simple_rag.py    # Simple RAG
 │   ├── oracle_rag.py    # Oracle RAG
+│   ├── simple_agent.py  # Agent (실행 진입점)
+│   ├── agent/           # 에이전트 구현 (Agent 루프, LLM 클라이언트, search 도구 등)
 │   ├── common.py        # CLI 인자, 프롬프트 로딩, 출력 스키마, 실행 기록 저장
 │   ├── eval.py          # accuracy / F1 계산 및 실행 비교
 │   ├── download_data.py # dev.json + knowledge store 다운로드
 │   └── build_db.py      # knowledge store → 클레임별 Chroma 컬렉션
 ├── prompts/
-│   └── base.txt         # 시스템 프롬프트
+│   ├── base.txt         # 시스템 프롬프트 (No RAG·Simple RAG·Oracle RAG)
+│   └── agent_base.txt   # 시스템 프롬프트 (Agent)
 └── scripts/             # 위 스크립트들의 기본 인자를 담은 실행 스크립트
 ```
 

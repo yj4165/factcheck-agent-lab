@@ -89,7 +89,7 @@ def get_device() -> str:
 
 # 자동 실행 이름에 쓰는 방법 약칭 (스크립트 이름 → 약칭)
 METHOD_NAMES = {"no_rag": "norag", "simple_rag": "rag", "oracle_rag": "oracle",
-                "fact_checking_agent": "agent"}
+                "simple_agent": "agent"}
 # 이 값과 다를 때만 실행 이름에 덧붙이는 인자: (인자 이름, 기본값, 접두어)
 NAME_EXTRAS = [("model", "gpt-5-nano", ""), ("max_steps", 10, "s")]
 
