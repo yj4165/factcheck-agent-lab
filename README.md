@@ -3,10 +3,10 @@
 [English](README.en.md) | **한국어**
 
 LLM으로 실세계 클레임(claim)을 팩트체크하는 실험 저장소입니다.
-[AVeriTeC](https://huggingface.co/chenxwh/AVeriTeC) dev 셋(500개 클레임)에서 클레임마다 근거를 찾아
+[AVeriTeC](https://huggingface.co/chenxwh/AVeriTeC) dev set(500개 클레임)에서 클레임마다 근거를 찾아
 LLM에 넣고, 아래 4개 라벨 중 하나로 판정하게 한 뒤 정답과 비교합니다.
 
-| 라벨 | dev 셋 개수 |
+| 라벨 | dev set 개수 |
 |---|---:|
 | Supported | 122 |
 | Refuted | 305 |
@@ -31,22 +31,20 @@ Agent는 도구 사용을 안내하는 별도 프롬프트([prompts/agent_base.t
 
 ## 실험 설정
 
-아래 결과는 모두 이 설정으로 실행했습니다 (No RAG·Simple RAG·Oracle RAG는 2026-11-16, Agent는 2026-11-18, 방법별 1회).
+아래 결과는 모두 이 설정으로 방법별 1회 실행한 것입니다.
 
 | 항목 | 값 |
 |---|---|
 | LLM | OpenAI `gpt-5-nano` ([LiteLLM](https://docs.litellm.ai/) 경유, temperature·reasoning effort 등은 지정하지 않아 API 기본값) |
-| 출력 형식 | 구조화된 출력 (`reasoning`, `verdict`, `confidence`) |
-| 시스템 프롬프트 | [prompts/base.txt](prompts/base.txt) (Agent는 [prompts/agent_base.txt](prompts/agent_base.txt)) |
-| 데이터 | AVeriTeC dev 셋 500개 전체 |
+| 데이터 | AVeriTeC dev set 500개 전체 |
 | 임베딩 모델 (Simple RAG) | `BAAI/bge-small-en-v1.5` |
 | 검색 (Simple RAG) | 클레임 문장으로 1회 검색, 코사인 유사도 상위 10문장 |
-| 검색 (Agent) | 모델이 정한 검색어로 필요한 만큼 검색, 검색 1회당 상위 10문장 (Simple RAG와 같은 DB·임베딩 모델) |
+| 검색 (Agent) | 모델이 정한 검색어로 필요한 만큼 검색, 검색 1회당 상위 10문장 |
 | 최대 스텝 (Agent) | 10 (스텝 = LLM 호출 1회 + 도구 실행). 마지막 스텝에서는 `final_answer` 호출을 강제 |
 
 방법별 사용량 (500개 기준):
 
-| 방법 | 입력 토큰 | 출력 토큰 | 소요 시간 (동시 요청 10개) |
+| 방법 | 입력 토큰 | 출력 토큰 | 소요 시간 (클레임 10개 동시 처리) |
 |---|---:|---:|---:|
 | No RAG | 87,196 | 628,641 | 약 11분 |
 | Simple RAG | 290,690 | 611,724 | 약 11분 |
@@ -83,23 +81,16 @@ Agent는 클레임당 평균 4.85회 LLM을 호출하고(총 2,426회), 매 호�
   그만큼 Refuted recall이 오릅니다(0.46 → 0.47 → 0.85).
 - **근거가 완벽해도 Not Enough Evidence와 Conflicting은 어렵습니다.** Oracle에서도 두 라벨의 F1은 0.4 안팎입니다.
   이 부분은 검색보다 프롬프트·라벨 정의 쪽 문제로 보입니다.
-- **에이전트가 검색어를 정하면 accuracy가 Simple RAG보다 5.0%p 오릅니다**(0.482 → 0.532). 검색 DB와 검색 1회당 근거 개수는 같으므로
-  차이는 검색어 선택과 검색 횟수에서 나옵니다. 개선은 주로 Refuted에서 나왔습니다(F1 0.597 → 0.668, recall 0.47 → 0.57).
+- **에이전트가 검색어를 정하면 accuracy가 Simple RAG보다 5.0%p 오릅니다**(0.482 → 0.532).
+  검색 조건이 같으므로 차이는 검색어 선택과 검색 횟수에서 나옵니다. 개선은 주로 Refuted에서 나왔습니다(F1 0.597 → 0.668, recall 0.47 → 0.57).
   다만 Macro F1은 0.413 → 0.421로 거의 그대로이고, Oracle RAG(0.766)와의 차이는 여전히 큽니다.
 - **근거를 못 찾은 에이전트는 최대 스텝까지 검색을 반복하다 Not Enough Evidence로 끝납니다.**
-  78개(15.6%)가 최대 스텝 10에 도달했고, 이 중 50개를 Not Enough Evidence로 판정해 accuracy가 0.21(16/78)에 그쳤습니다
-  (이 78개 중 정답이 Not Enough Evidence인 것은 8개). 반면 검색 1회 후 바로 답한 142개는 0.68(96/142)입니다.
-  그 결과 Not Enough Evidence의 F1은 Simple RAG보다 오히려 낮습니다(0.185 → 0.134).
+  최대 스텝(10)에 도달한 78개(15.6%)는 accuracy 0.21에 그쳤고, 그 결과 Not Enough Evidence의 F1은 Simple RAG보다 오히려 낮습니다(0.185 → 0.134).
+  ([스텝 분석](docs/analysis/agent_steps.md))
+- **모델이 낸 확신도는 정답 여부와 강하게 관련되지만, 그 신호는 대부분 예측 라벨에서 옵니다.** Not Enough Evidence 예측은
+  확신도가 항상 0.7 미만이고, 같은 라벨 안에서는 구분력이 약합니다. ([확신도 분석](docs/analysis/confidence.md))
 
-Agent의 스텝·검색 횟수 분포 (500개):
-
-| 스텝 수 | 클레임 수 | Accuracy |
-|---|---:|---:|
-| 2 (검색 1회 → 판정) | 142 | 0.676 |
-| 3–9 | 280 | 0.550 |
-| 10 (최대 스텝 도달) | 78 | 0.205 |
-
-클레임당 검색 횟수는 평균 4.0회, 중앙값 2회입니다 (한 스텝에서 여러 검색을 동시에 호출할 수 있어 스텝 수와 다릅니다).
+더 자세한 분석은 [docs/analysis/](docs/analysis/)에 있습니다.
 
 참고 사항:
 
@@ -154,8 +145,7 @@ scripts/run_agent.sh        # → results/agent_base_k10_n500/
 
 인자를 덧붙이면 기본값을 덮어씁니다. 예: `scripts/run_simple_rag.sh --num-samples 10 --top-k 3`.
 전체 인자는 `uv run python src/simple_rag.py --help`로 볼 수 있습니다.
-동시 요청 10개 기준으로 500개 실행에 No RAG·Simple RAG 각각 약 11분, Oracle RAG 약 8분, Agent 약 25분이 걸렸습니다
-(Agent는 클레임 10개를 동시에 처리).
+소요 시간은 [실험 설정](#실험-설정)의 사용량 표를 참고하세요.
 Agent의 도구 구성과 최대 스텝은 `--tools`(기본 `search`), `--max-steps`(기본 10)로 바꿀 수 있습니다.
 
 실행 하나는 `results/<run-name>/` 폴더 하나로 저장됩니다.
@@ -191,6 +181,8 @@ scripts/eval.sh results/rag_base_k10_n500 --show             # 정답/예측 쌍
 │   ├── eval.py          # accuracy / F1 계산 및 실행 비교
 │   ├── download_data.py # dev.json + knowledge store 다운로드
 │   └── build_db.py      # knowledge store → 클레임별 Chroma 컬렉션
+├── analysis/            # 결과 분석 스크립트 (docs/analysis/의 숫자를 다시 만든다)
+├── docs/analysis/       # 분석 문서 (확신도, 에이전트 스텝 등)
 ├── prompts/
 │   ├── base.txt         # 시스템 프롬프트 (No RAG·Simple RAG·Oracle RAG)
 │   └── agent_base.txt   # 시스템 프롬프트 (Agent)

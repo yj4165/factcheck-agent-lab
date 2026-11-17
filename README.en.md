@@ -31,22 +31,20 @@ and its user message contains only the claim text. It returns the same three fie
 
 ## Experimental setup
 
-All results below use this setup (No RAG, Simple RAG and Oracle RAG on 2026-11-16, Agent on 2026-11-18; one run per method).
+All results below use this setup, with one run per method.
 
 | Item | Value |
 |---|---|
 | LLM | OpenAI `gpt-5-nano` (via [LiteLLM](https://docs.litellm.ai/); temperature, reasoning effort, etc. not set, so API defaults) |
-| Output format | structured output (`reasoning`, `verdict`, `confidence`) |
-| System prompt | [prompts/base.txt](prompts/base.txt) ([prompts/agent_base.txt](prompts/agent_base.txt) for Agent) |
 | Data | all 500 claims of the AVeriTeC dev set |
 | Embedding model (Simple RAG) | `BAAI/bge-small-en-v1.5` |
 | Retrieval (Simple RAG) | one search with the claim text, top 10 sentences by cosine similarity |
-| Retrieval (Agent) | as many searches as the model wants, with its own queries; top 10 sentences per search (same DB and embedding model as Simple RAG) |
+| Retrieval (Agent) | as many searches as the model wants, with its own queries; top 10 sentences per search |
 | Max steps (Agent) | 10 (step = one LLM call + tool execution). A `final_answer` call is forced on the last step |
 
 Usage per method (500 claims):
 
-| Method | Input tokens | Output tokens | Time (10 concurrent requests) |
+| Method | Input tokens | Output tokens | Time (10 claims processed concurrently) |
 |---|---:|---:|---:|
 | No RAG | 87,196 | 628,641 | ~11 min |
 | Simple RAG | 290,690 | 611,724 | ~11 min |
@@ -83,23 +81,17 @@ Observations:
   and Refuted recall rises accordingly (0.46 → 0.47 → 0.85).
 - **Not Enough Evidence and Conflicting remain hard even with perfect evidence.** Even with Oracle RAG, F1 for both labels is around 0.4.
   This looks like a prompt / label-definition problem rather than a retrieval problem.
-- **Letting an agent choose its own queries improves accuracy by 5.0 points over Simple RAG** (0.482 → 0.532). The retrieval DB and the
-  number of sentences per search are the same, so the gain comes from query choice and the number of searches. Most of it is on Refuted
+- **Letting an agent choose its own queries improves accuracy by 5.0 points over Simple RAG** (0.482 → 0.532).
+  The retrieval setup is the same, so the gain comes from query choice and the number of searches. Most of it is on Refuted
   (F1 0.597 → 0.668, recall 0.47 → 0.57). Macro F1, however, barely moves (0.413 → 0.421), and the gap to Oracle RAG (0.766) is still large.
 - **When the agent cannot find evidence, it keeps searching until the step limit and ends with Not Enough Evidence.**
-  78 claims (15.6%) hit the 10-step limit; 50 of them were labeled Not Enough Evidence, and accuracy on these 78 was only 0.21 (16/78)
-  (only 8 of the 78 are actually Not Enough Evidence). By contrast, the 142 claims answered right after a single search reached 0.68 (96/142).
-  As a result, Not Enough Evidence F1 is even lower than with Simple RAG (0.185 → 0.134).
+  The 78 claims (15.6%) that hit the 10-step limit reached only 0.21 accuracy, and as a result Not Enough Evidence F1 is even lower than with Simple RAG (0.185 → 0.134).
+  ([step analysis](docs/analysis/agent_steps.md))
+- **The model's confidence is strongly related to correctness, but most of that signal comes from the predicted label.** Not Enough Evidence
+  predictions always have confidence below 0.7, and within the same label confidence separates right from wrong answers only weakly.
+  ([confidence analysis](docs/analysis/confidence.md))
 
-Agent steps and searches (500 claims):
-
-| Steps | Claims | Accuracy |
-|---|---:|---:|
-| 2 (one search → verdict) | 142 | 0.676 |
-| 3–9 | 280 | 0.550 |
-| 10 (step limit reached) | 78 | 0.205 |
-
-The agent makes 4.0 searches per claim on average (median 2). This differs from the step count because several searches can be called in a single step.
+More detailed analyses are in [docs/analysis/](docs/analysis/) (in Korean).
 
 Notes:
 
@@ -155,8 +147,7 @@ scripts/run_agent.sh        # → results/agent_base_k10_n500/
 
 Extra arguments override the defaults, e.g. `scripts/run_simple_rag.sh --num-samples 10 --top-k 3`.
 See `uv run python src/simple_rag.py --help` for all arguments.
-With 10 concurrent requests, a 500-claim run took about 11 minutes each for No RAG and Simple RAG, about 8 minutes for Oracle RAG,
-and about 25 minutes for the Agent (10 claims processed concurrently).
+See the usage table under [Experimental setup](#experimental-setup) for run times.
 The Agent's tools and step limit can be changed with `--tools` (default `search`) and `--max-steps` (default 10).
 
 Each run is saved to its own `results/<run-name>/` folder.
@@ -192,6 +183,8 @@ scripts/eval.sh results/rag_base_k10_n500 --show             # also print gold/p
 │   ├── eval.py          # accuracy / F1 and run comparison
 │   ├── download_data.py # download dev.json + knowledge store
 │   └── build_db.py      # knowledge store → per-claim Chroma collections
+├── analysis/            # result analysis scripts (reproduce the numbers in docs/analysis/)
+├── docs/analysis/       # analysis write-ups, in Korean (confidence, agent steps, ...)
 ├── prompts/
 │   ├── base.txt         # system prompt (No RAG, Simple RAG, Oracle RAG)
 │   └── agent_base.txt   # system prompt (Agent)

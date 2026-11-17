@@ -1,4 +1,4 @@
-"""데이터 다운로드: AVeriTeC dev 셋(dev.json)과 knowledge store를 datasets/ 에 받는다.
+"""데이터 다운로드: AVeriTeC dev set(dev.json)과 knowledge store를 datasets/ 에 받는다.
 
     dev.json             : 평가용 클레임 + 정답
     knowledge_store.zip  : 클레임별 검색 대상 문서 묶음 (약 11GB)
@@ -30,7 +30,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data-dir", default="datasets", help="데이터를 저장할 폴더")
     parser.add_argument("--start-claim", type=int, default=0, help="압축을 풀 첫 클레임 번호")
     parser.add_argument("--num-claims", type=int, default=500,
-                        help="압축을 풀 클레임 수 (dev 셋 전체는 500)")
+                        help="압축을 풀 클레임 수 (dev set 전체는 500)")
     parser.add_argument("--skip-knowledge-store", action="store_true",
                         help="dev.json만 받고 knowledge store는 받지 않는다")
     return parser.parse_args()
