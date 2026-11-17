@@ -55,7 +55,7 @@ class UsageTrackingClient(LlmClient):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    add_common_args(parser, default_prompt="agent_refuted_rule")
+    add_common_args(parser, default_prompt="agent_base")
     add_retrieval_args(parser)
     parser.add_argument("--tools", default="search",
                         help=f"쉼표로 구분한 도구 목록. 사용 가능: {', '.join(AVAILABLE_TOOLS)}")
